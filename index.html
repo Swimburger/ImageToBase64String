@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <style>
+        .output-text-wrapper{
+            position: relative;
+        }
+        .output-text-wrapper button{
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: .5em .75em .625em .7em;
+            line-height: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <div class="mb-3">
+            <label for="file-input" class="form-label">Select file</label>
+            <input class="form-control" id="file-input" type="file">
+        </div>
+        <div class="row">
+            <div class="col-sm">
+                <div class="mb-3">
+                    <label for="output-text" class="form-label">Base64 output</label>
+                    <div class="output-text-wrapper">
+                        <button id="copy-button" type="button" class="btn btn-light" title="Copy to clipboard">
+                            <svg id="clipboard-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+                                <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                            </svg>
+                            <svg id="clipboard-check-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard-check" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M10.854 7.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 9.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                                <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                            </svg>
+                            <svg id="check-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check" viewBox="0 0 16 16">
+                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                            </svg>
+                        </button>
+                        <textarea id="output-text" class="form-control" rows="20" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm">
+                <div class="mb-3">
+                    <label class="form-label">Image preview</label>
+                    <img id="output-image" class="img-fluid" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        (function () {
+            var fileInput = document.getElementById('file-input');
+            var outputImage = document.getElementById('output-image');
+            var outputText = document.getElementById('output-text');
+            var copyButton = document.getElementById('copy-button');
+            var clipboardIcon = document.getElementById('clipboard-icon');
+            var checkIcon = document.getElementById('check-icon');
+
+            fileInput.addEventListener('change', function (event) {
+                var file = event.target.files[0];
+                var reader = new FileReader();
+                reader.onload = function () {
+                    outputText.value = reader.result;
+
+                    if (file.type && file.type.indexOf('image') !== -1) {
+                        outputImage.src = reader.result;
+                        outputImage.style.display = 'block';
+                    }
+                    else {
+                        outputImage.src = '';
+                        outputImage.style.display = 'none';
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+
+            outputText.addEventListener('click', function(){
+                outputText.setSelectionRange(0, outputText.value.length)
+            });
+
+            copyButton.addEventListener('click', function(){
+
+                outputText.select();
+                outputText.setSelectionRange(0, outputText.value.length);
+                document.execCommand("copy");
+                var originalTitle = copyButton.title;
+                copyButton.title = 'Copied!';
+                clipboardIcon.style.display = 'none';
+                checkIcon.style.display = 'inline-block';
+                setTimeout(function(){
+                    copyButton.title = originalTitle;
+                    clipboardIcon.style.display = 'inline-block';
+                    checkIcon.style.display = 'none';
+                }, 2000);
+            });
+        })();
+    </script>
+</body>
+
+</html>
