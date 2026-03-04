@@ -239,7 +239,7 @@
                                 d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
                             <path
                                 d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
-                        </svg>Copy
+                        </svg><span id="copy-label">Copy</span>
                     </button>
                     <textarea id="output-text" class="form-control" rows="20" readonly></textarea>
                 </div>
@@ -304,14 +304,17 @@
         crossorigin="anonymous"></script>
     <script>
         (() => {
+            const COPY_FEEDBACK_MS = 2000;
+
             const fileInput = document.getElementById('file-input');
             const dropZone = document.getElementById('drop-zone');
             const outputImage = document.getElementById('output-image');
             const previewPlaceholder = document.getElementById('preview-placeholder');
             const outputText = document.getElementById('output-text');
             const copyButton = document.getElementById('copy-button');
+            const copyLabel = document.getElementById('copy-label');
             const clipboardIcon = document.getElementById('clipboard-icon');
-            const copyToast = new bootstrap.Toast(document.getElementById('copy-toast'), { delay: 2000 });
+            const copyToast = new bootstrap.Toast(document.getElementById('copy-toast'), { delay: COPY_FEEDBACK_MS });
             const snippetSection = document.getElementById('snippet-section');
             const snippetHtml = document.getElementById('snippet-html');
             const snippetCss = document.getElementById('snippet-css');
@@ -340,9 +343,10 @@
                         outputImage.style.display = 'block';
                         previewPlaceholder.style.display = 'none';
                         if (file.size <= 100 * 1024) {
-                            snippetHtml.value = `<img src="${lastDataUrl}" alt="">`;
-                            snippetCss.value = `background-image: url("${lastDataUrl}");`;
-                            snippetMd.value = `![alt](${lastDataUrl})`;
+                            const preview = lastDataUrl.slice(0, 40) + '\u2026';
+                            snippetHtml.value = `<img src="${preview}" alt="">`;
+                            snippetCss.value = `background-image: url("${preview}");`;
+                            snippetMd.value = `![alt](${preview})`;
                             snippetSection.style.display = 'block';
                         } else {
                             snippetSection.style.display = 'none';
@@ -400,40 +404,50 @@
             });
 
             // Load ramen image as default
-            fetch('ramen.jpg').then(r => r.blob()).then(blob => processFile(blob));
+            fetch('ramen.jpg')
+                .then(r => r.blob())
+                .then(blob => processFile(blob))
+                .catch(() => {});
 
             // Format toggle
             document.querySelectorAll('input[name="format"]').forEach(
                 input => input.addEventListener('change', updateOutput)
             );
 
-            outputText.addEventListener('click', () => {
-                outputText.setSelectionRange(0, outputText.value.length);
-            });
+            // Select all on click or keyboard focus
+            ['click', 'focus'].forEach(e =>
+                outputText.addEventListener(e, () => outputText.setSelectionRange(0, outputText.value.length))
+            );
 
-            outputText.addEventListener('focus', () => {
-                outputText.setSelectionRange(0, outputText.value.length);
-            });
+            // Snippet copy buttons — build full snippet from lastDataUrl at copy time
+            const snippetBuilders = {
+                'snippet-html': () => `<img src="${lastDataUrl}" alt="">`,
+                'snippet-css':  () => `background-image: url("${lastDataUrl}");`,
+                'snippet-md':   () => `![alt](${lastDataUrl})`,
+            };
 
             document.querySelectorAll('.snippet-copy').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    const input = document.getElementById(btn.dataset.target);
-                    await navigator.clipboard.writeText(input.value);
-                    const original = btn.textContent;
-                    btn.textContent = 'Copied!';
-                    setTimeout(() => btn.textContent = original, 2000);
+                    try {
+                        await navigator.clipboard.writeText(snippetBuilders[btn.dataset.target]());
+                        const original = btn.textContent;
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => btn.textContent = original, COPY_FEEDBACK_MS);
+                    } catch {}
                 });
             });
 
             copyButton.addEventListener('click', async () => {
-                await navigator.clipboard.writeText(outputText.value);
-                copyToast.show();
-                clipboardIcon.style.display = 'none';
-                copyButton.append(' Copied!');
-                setTimeout(() => {
-                    copyButton.lastChild.remove();
-                    clipboardIcon.style.display = 'inline-block';
-                }, 2000);
+                try {
+                    await navigator.clipboard.writeText(outputText.value);
+                    copyToast.show();
+                    clipboardIcon.style.display = 'none';
+                    copyLabel.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyLabel.textContent = 'Copy';
+                        clipboardIcon.style.display = 'inline-block';
+                    }, COPY_FEEDBACK_MS);
+                } catch {}
             });
         })();
     </script>
