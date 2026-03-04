@@ -159,6 +159,19 @@
             margin-top: 1px;
             opacity: .7;
         }
+
+        /* Snippet generator */
+        .snippet-section {
+            display: none;
+        }
+
+        .snippet-input {
+            font-family: var(--bs-font-monospace);
+            font-size: .75rem;
+            color: var(--bs-secondary-color);
+            background-color: var(--bs-tertiary-bg);
+            cursor: default;
+        }
     </style>
 </head>
 
@@ -219,16 +232,37 @@
                     </div>
                 </div>
                 <div class="output-text-wrapper">
-                    <button id="copy-button" type="button" class="btn btn-sm btn-light border" title="Copy to clipboard">
+                    <button id="copy-button" type="button" class="btn btn-sm btn-primary" title="Copy to clipboard">
                         <svg id="clipboard-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                            fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+                            fill="currentColor" class="bi bi-clipboard me-1" viewBox="0 0 16 16">
                             <path
                                 d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
                             <path
                                 d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
-                        </svg>
+                        </svg>Copy
                     </button>
                     <textarea id="output-text" class="form-control" rows="20" readonly></textarea>
+                </div>
+
+                <div id="snippet-section" class="snippet-section mt-3">
+                    <p class="form-label fw-medium mb-2">Use as</p>
+                    <div class="d-flex flex-column gap-2">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text text-body-secondary" style="width:5rem;">HTML</span>
+                            <input id="snippet-html" type="text" class="form-control snippet-input" readonly>
+                            <button class="btn btn-outline-secondary snippet-copy" data-target="snippet-html" type="button">Copy</button>
+                        </div>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text text-body-secondary" style="width:5rem;">CSS</span>
+                            <input id="snippet-css" type="text" class="form-control snippet-input" readonly>
+                            <button class="btn btn-outline-secondary snippet-copy" data-target="snippet-css" type="button">Copy</button>
+                        </div>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text text-body-secondary" style="width:5rem;">Markdown</span>
+                            <input id="snippet-md" type="text" class="form-control snippet-input" readonly>
+                            <button class="btn btn-outline-secondary snippet-copy" data-target="snippet-md" type="button">Copy</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-6">
@@ -278,6 +312,10 @@
             const copyButton = document.getElementById('copy-button');
             const clipboardIcon = document.getElementById('clipboard-icon');
             const copyToast = new bootstrap.Toast(document.getElementById('copy-toast'), { delay: 2000 });
+            const snippetSection = document.getElementById('snippet-section');
+            const snippetHtml = document.getElementById('snippet-html');
+            const snippetCss = document.getElementById('snippet-css');
+            const snippetMd = document.getElementById('snippet-md');
 
             let lastDataUrl = '';
 
@@ -301,10 +339,19 @@
                         outputImage.src = lastDataUrl;
                         outputImage.style.display = 'block';
                         previewPlaceholder.style.display = 'none';
+                        if (file.size <= 100 * 1024) {
+                            snippetHtml.value = `<img src="${lastDataUrl}" alt="">`;
+                            snippetCss.value = `background-image: url("${lastDataUrl}");`;
+                            snippetMd.value = `![alt](${lastDataUrl})`;
+                            snippetSection.style.display = 'block';
+                        } else {
+                            snippetSection.style.display = 'none';
+                        }
                     } else {
                         outputImage.src = '';
                         outputImage.style.display = 'none';
                         previewPlaceholder.style.display = 'block';
+                        snippetSection.style.display = 'none';
                     }
                 };
                 reader.readAsDataURL(file);
@@ -368,9 +415,25 @@
                 outputText.setSelectionRange(0, outputText.value.length);
             });
 
+            document.querySelectorAll('.snippet-copy').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const input = document.getElementById(btn.dataset.target);
+                    await navigator.clipboard.writeText(input.value);
+                    const original = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = original, 2000);
+                });
+            });
+
             copyButton.addEventListener('click', async () => {
                 await navigator.clipboard.writeText(outputText.value);
                 copyToast.show();
+                clipboardIcon.style.display = 'none';
+                copyButton.append(' Copied!');
+                setTimeout(() => {
+                    copyButton.lastChild.remove();
+                    clipboardIcon.style.display = 'inline-block';
+                }, 2000);
             });
         })();
     </script>
