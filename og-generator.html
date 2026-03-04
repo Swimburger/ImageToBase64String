@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>OG Image Generator</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            gap: 1.5rem;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        canvas {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 8px 40px rgba(0,0,0,.6);
+        }
+        button {
+            padding: .75rem 2rem;
+            background: #a02c56;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:hover { background: #6c0a51; }
+    </style>
+</head>
+<body>
+    <canvas id="og" width="1200" height="630"></canvas>
+    <button onclick="download()">Download og-image.png</button>
+    <script>
+        const canvas = document.getElementById('og');
+        const ctx = canvas.getContext('2d');
+        const W = 1200, H = 630, PAD = 96;
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.arcTo(x + w, y,     x + w, y + r,     r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+            ctx.lineTo(x + r, y + h);
+            ctx.arcTo(x,     y + h, x,     y + h - r, r);
+            ctx.lineTo(x,     y + r);
+            ctx.arcTo(x,     y,     x + r, y,         r);
+            ctx.closePath();
+        }
+
+        // Background gradient
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0, '#4a0636');
+        grad.addColorStop(1, '#a02c56');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Dot grid texture
+        ctx.fillStyle = 'rgba(255,255,255,0.045)';
+        for (let x = 48; x < W; x += 40)
+            for (let y = 40; y < H; y += 40) {
+                ctx.beginPath();
+                ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+        // Title
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 62px "Segoe UI", Tahoma, Arial, sans-serif';
+        ctx.fillText('Base64 Image Encoder', PAD, 210);
+
+        // Subtitle
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = '27px "Segoe UI", Tahoma, Arial, sans-serif';
+        ctx.fillText('Convert any image to base64 — instantly in your browser', PAD, 268);
+
+        // Code box
+        const boxY = 316, boxH = 72, boxW = W - PAD * 2;
+        ctx.fillStyle = 'rgba(13,17,23,0.6)';
+        roundRect(PAD, boxY, boxW, boxH, 10);
+        ctx.fill();
+
+        // Code text: accent prefix + muted data
+        const mono = '22px "Cascadia Code", "Fira Code", Consolas, monospace';
+        ctx.font = mono;
+        const prefix = 'data:image/jpeg;base64,';
+        ctx.fillStyle = '#ffc966';
+        ctx.fillText(prefix, PAD + 22, boxY + 45);
+        ctx.fillStyle = 'rgba(230,237,243,0.55)';
+        ctx.fillText('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgICAgJCAkKCgkN…', PAD + 22 + ctx.measureText(prefix).width, boxY + 45);
+
+        // Brand
+        ctx.fillStyle = '#ffc966';
+        ctx.font = '22px "Segoe UI", Tahoma, Arial, sans-serif';
+        ctx.fillText('swimburger.net', PAD, 568);
+
+        function download() {
+            const a = document.createElement('a');
+            a.download = 'og-image.png';
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+        }
+    </script>
+</body>
+</html>
