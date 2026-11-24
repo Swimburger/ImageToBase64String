@@ -55,7 +55,26 @@ test("serves the production-shaped app with local assets and metadata", async ({
   expect(html.indexOf('<meta name="color-scheme"')).toBeLessThan(html.indexOf('<link rel="stylesheet"'));
   expect(html).toContain('<link rel="canonical" href="https://img2base64.swimburger.net/">');
   expect(html).toContain('<meta property="og:url" content="https://img2base64.swimburger.net/">');
+  expect(html).toContain('<meta property="og:image" content="https://img2base64.swimburger.net/og-image.png">');
+  expect(html).toContain('<meta property="og:image:width" content="1200">');
+  expect(html).toContain('<meta property="og:image:height" content="630">');
+  expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+  expect(html).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg">');
+  expect(html).toContain('<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">');
   expect(html).toContain('href="https://swimburger.net/privacy"');
+
+  for (const asset of [
+    "/og-image.png",
+    "/favicon.svg",
+    "/favicon-16x16.png",
+    "/favicon-32x32.png",
+    "/favicon-96x96.png",
+    "/apple-touch-icon.png",
+  ]) {
+    const assetResponse = await request.get(asset);
+    expect(assetResponse.status(), asset).toBe(200);
+    expect(assetResponse.headers()["cache-control"], asset).toContain("max-age=86400");
+  }
 
   await page.goto("/");
   await expect(page).toHaveTitle("Online base64 image encoder");

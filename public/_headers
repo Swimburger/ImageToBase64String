@@ -6,6 +6,15 @@
 /og-image.png
   Cache-Control: public, max-age=86400
 
+/favicon.svg
+  Cache-Control: public, max-age=86400
+
+/favicon-*.png
+  Cache-Control: public, max-age=86400
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=86400
+
 /ramen.jpg
   Cache-Control: public, max-age=86400
 
