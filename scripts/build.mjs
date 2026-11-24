@@ -1,7 +1,7 @@
 import { cp, mkdir, rm } from "node:fs/promises";
 
 const outputDirectory = new URL("../dist/", import.meta.url);
-const publicFiles = ["index.html", "og-image.png", "ramen.jpg"];
+const publicFiles = ["index.html", "app.css", "app.js", "og-image.png", "ramen.jpg"];
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
