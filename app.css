@@ -141,6 +141,13 @@ main {
     background: color-mix(in srgb, var(--surface) 94%, var(--interactive));
 }
 
+.paste-hint {
+    margin: 0.65rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    text-align: center;
+}
+
 :where(a, button, input, textarea):focus-visible,
 .format-options input:focus-visible + label {
     outline: var(--focus-ring-width) solid var(--focus-ring);
@@ -327,6 +334,8 @@ textarea {
     border-radius: 0.4rem;
     background: var(--surface-muted);
 }
+
+.file-details .file-name-detail { grid-column: 1 / -1; }
 
 .file-details dt {
     color: var(--text-muted);

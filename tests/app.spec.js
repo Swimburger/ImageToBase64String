@@ -13,6 +13,32 @@ const contrastRatio = (first, second) => {
   return (values[0] + 0.05) / (values[1] + 0.05);
 };
 
+const dispatchClipboardPaste = (page, { files = [], text, target = "body" } = {}) => (
+  page.evaluate(({ files, text, target }) => {
+    const clipboardData = new DataTransfer();
+    if (text !== undefined) clipboardData.setData("text/plain", text);
+    for (const file of files) {
+      clipboardData.items.add(new File(
+        [new Uint8Array(file.bytes)],
+        file.name,
+        { type: file.type, lastModified: file.lastModified || 1 },
+      ));
+    }
+    const event = new ClipboardEvent("paste", {
+      bubbles: true,
+      cancelable: true,
+      clipboardData,
+    });
+    document.querySelector(target).dispatchEvent(event);
+    return { defaultPrevented: event.defaultPrevented };
+  }, { files, text, target })
+);
+
+const onePixelPng = [...Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+)];
+
 test("serves the production-shaped app with local assets and metadata", async ({ page, request }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -37,6 +63,123 @@ test("serves the production-shaped app with local assets and metadata", async ({
   await expect(page.getByRole("status")).toContainText("Sample image encoded successfully");
   await expect(page.locator("#copy-button")).toBeEnabled();
   expect(pageErrors).toEqual([]);
+});
+
+test("pastes a PNG through the image pipeline without moving keyboard focus", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#copy-button")).toBeEnabled();
+  await page.locator("#drop-zone").focus();
+
+  const paste = await dispatchClipboardPaste(page, {
+    files: [{ name: "", type: "image/png", bytes: onePixelPng }],
+    target: "#drop-zone",
+  });
+
+  expect(paste.defaultPrevented).toBe(true);
+  await expect(page.locator("#drop-zone")).toBeFocused();
+  await expect(page.locator("#output-text")).toHaveValue(/^data:image\/png;base64,/);
+  await expect(page.locator("#file-name")).toHaveText("pasted-image.png");
+  await expect(page.locator("#mime-type")).toHaveText("image/png");
+  await expect(page.locator("#output-image")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText(
+    "Pasted image “pasted-image.png” encoded successfully. The complete output is ready to copy.",
+  );
+  await expect(page.locator("#paste-hint")).toContainText("Ctrl+V or Command+V");
+});
+
+test("uses an image from mixed clipboard data and leaves non-image paste alone", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#copy-button")).toBeEnabled();
+  const originalOutput = await page.locator("#output-text").inputValue();
+  const originalStatus = await page.getByRole("status").textContent();
+
+  const textPaste = await dispatchClipboardPaste(page, {
+    text: "keep this normal text paste",
+    target: "#output-text",
+  });
+  expect(textPaste.defaultPrevented).toBe(false);
+  await expect(page.locator("#output-text")).toHaveValue(originalOutput);
+  await expect(page.getByRole("status")).toHaveText(originalStatus);
+
+  const mixedPaste = await dispatchClipboardPaste(page, {
+    text: "clipboard also contains text",
+    files: [{ name: "clipboard.webp", type: "image/webp", bytes: [82, 73, 70, 70] }],
+  });
+  expect(mixedPaste.defaultPrevented).toBe(true);
+  await expect(page.locator("#file-name")).toHaveText("clipboard.webp");
+  await expect(page.locator("#mime-type")).toHaveText("image/webp");
+  await expect(page.locator("#output-text")).toHaveValue(/^data:image\/webp;base64,/);
+});
+
+test("keeps the newest pasted image when reads are replaced rapidly", async ({ page }) => {
+  await page.addInitScript(() => {
+    class DelayedFileReader {
+      readyState = 0;
+
+      readAsDataURL(file) {
+        this.readyState = 1;
+        const delay = file.name === "first.png" ? 250 : 0;
+        window.setTimeout(() => {
+          if (this.readyState !== 1) return;
+          this.readyState = 2;
+          this.result = `data:${file.type || "image/jpeg"};base64,${btoa(file.name || "sample")}`;
+          this.onload?.();
+        }, delay);
+      }
+
+      abort() {
+        if (this.readyState !== 1) return;
+        this.readyState = 2;
+        this.onabort?.();
+      }
+    }
+    Object.defineProperty(window, "FileReader", { configurable: true, value: DelayedFileReader });
+  });
+  await page.goto("/");
+  await expect(page.locator("#copy-button")).toBeEnabled();
+
+  await dispatchClipboardPaste(page, {
+    files: [{ name: "first.png", type: "image/png", bytes: [1] }],
+  });
+  await dispatchClipboardPaste(page, {
+    files: [{ name: "second.png", type: "image/png", bytes: [2] }],
+  });
+
+  await expect(page.locator("#file-name")).toHaveText("second.png");
+  await expect(page.locator("#output-text")).toHaveValue("data:image/png;base64,c2Vjb25kLnBuZw==");
+  await page.waitForTimeout(300);
+  await expect(page.locator("#file-name")).toHaveText("second.png");
+  await expect(page.getByRole("status")).toContainText("Pasted image “second.png” encoded successfully");
+});
+
+test("announces a pasted-image read failure without moving focus", async ({ page }) => {
+  await page.addInitScript(() => {
+    class FailingFileReader {
+      readyState = 0;
+
+      readAsDataURL() {
+        this.readyState = 1;
+        queueMicrotask(() => {
+          this.readyState = 2;
+          this.onerror?.();
+        });
+      }
+    }
+    Object.defineProperty(window, "FileReader", { configurable: true, value: FailingFileReader });
+  });
+  await page.goto("/");
+  await page.locator("#drop-zone").focus();
+  await dispatchClipboardPaste(page, {
+    files: [{ name: "broken.png", type: "image/png", bytes: [0] }],
+    target: "#drop-zone",
+  });
+
+  await expect(page.locator("#drop-zone")).toBeFocused();
+  await expect(page.locator("#copy-button")).toBeDisabled();
+  await expect(page.getByRole("status")).toHaveText(
+    "The pasted image could not be read. Copy it again and retry.",
+  );
+  await expect(page.getByRole("status")).toHaveAttribute("data-tone", "error");
 });
 
 for (const [layout, viewport] of [
