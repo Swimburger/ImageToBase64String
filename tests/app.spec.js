@@ -10,6 +10,7 @@ test("serves the production-shaped app with Cloudflare headers", async ({ page, 
   expect(response.headers()["cache-control"]).toBe("public, max-age=0, must-revalidate");
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
   expect(response.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+  expect(await response.text()).not.toMatch(/google-analytics|googletagmanager|gtag\(/i);
 
   await page.goto("/");
   await expect(page).toHaveTitle("Online base64 image encoder");
