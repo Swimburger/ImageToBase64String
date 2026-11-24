@@ -1,0 +1,9 @@
+.cloudflare/
+.wrangler/
+.dev.vars*
+.env*
+dist/
+node_modules/
+playwright-report/
+test-results/
+

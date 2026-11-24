@@ -1,0 +1,23 @@
+{
+  "name": "image-to-base64",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
+  "packageManager": "pnpm@12.23.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:cloudflare": "pnpm run build && cf build",
+    "build:cloudflare:prebuilt": "cf build",
+    "deploy": "pnpm run build:cloudflare && cf deploy --prebuilt",
+    "preview": "cf dev --port 4273 --inspector-port 9329",
+    "test": "pnpm run build:cloudflare && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "cf": "1.0.0-rc.4",
+    "wrangler": "4.167.0"
+  }
+}
+
